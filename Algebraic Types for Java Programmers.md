@@ -110,3 +110,73 @@ wrap a value as a Sum, while Product has two ways to unwrap a product into a
 value. This kind of relationship where two things are related with components
 reversed is known in mathematics as duality, and we'll be exploring it for the
 entirety of this document.
+
+## Variable Size and Infinitely Large Types
+
+The algebraic type constructors handled so far can create structures of great
+flexibility. We can turn functions of one type into functions of other types via
+composition/function.map, describe multiple types in a group via product, and
+describe the possibility of different types via sum. One of the things we are
+not able to do with these three constructors is to create types of arbitrary
+length. As programmers need to be able to describe data of indeterminate length,
+algebraic types must be extended to allow for such types.
+
+### Fixed Points
+
+We handle variable sized types in traditional type theory via what are known as
+Fixed Points. If we have some algebraic type expression F with an undefined term
+X in it, we can define the fixed point of F with respect to X. This is the type
+where X is replaced by F, introducing more Xs that can then be replaced by F, as
+many times as is needed. When this fixed point is desired to be finite, it is
+called the Least Fixed Point, when the fixed point can be infinite, it is called
+the Greatest Fixed Point.
+
+### Java Application
+
+So how do Fixed Points show up in Java? They can be encoded via using the type's
+name in its definition, like this implementation of binary trees.
+
+```java
+  public class BinaryTree<E> {
+    private E val;
+    private BinaryTree<E> left;
+    private BinaryTree<E> right;
+  }
+```
+
+Notice that in this case we can 'cheat' a little bit and not require a 'null'
+value because java reference types automatically have the possibility of being
+'null.' If we were to instead assume that references are always valid and never
+null, we would need a 'null' type. Let us call this type 'Unit' because it only
+has one value: null. So we then can refine the above definition in a more
+explicit manner.
+
+```java
+  public class BinaryTree<E> =
+    Sum<Unit,Product<E,Product<BinaryTree<E>,BinaryTree<E>>>>{};
+```
+
+This is obviously not valid java. However, it does make sense, in that a binary
+tree is either a nothing representing an empty tree, or an E and a pair of
+binary tree children. This could be turned into valid java by taking the
+definitions of sum and product and creating nested classes to match. However,
+once we have fundamental ways to combine types, it makes more sense to define
+types like we define variables.
+
+Another issue with the above definition is that it could be infinite, or even
+looping in a cyclical reference. It would be nice to specify that any instance
+of the type is finite, that some function that combines all the elements of the
+tree like sum will finish computing. Java has no way to differentiate between
+finite and potentially infinite types, the greatest and least fixed points. Such
+a check requires a language on top that handles such logic. We could assume such
+terms in an improved java like so.
+
+```java
+  public class Natural = LFix<X,Sum<Unit,X>>{};
+  public class Stream<E> = GFix<X,Product<E,X>>{};
+```
+
+In this case, Natural is either a null (in this case representing 0), or some
+nesting of n right constructors of Sum around a null, representing the nth
+natural number. Stream is some item and a Stream. Since there is no null, there
+is always another stream to project another item and stream 
