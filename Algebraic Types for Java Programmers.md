@@ -11,7 +11,7 @@ takes two functions and combines them in a similar way as the types. Let's start
 with product, as it is the most straightforward.
 
 ### Product
-
+```java
   public class Product<A, B> {
     private A left;
     private B right;
@@ -39,7 +39,7 @@ with product, as it is the most straightforward.
       return Product<A,A>(a,a);
     }
   }
-
+```
 Product is used to have two values or functions attached to one another so that
 they may be passed around as a single entity. Notice that there is no way to
 modify the values inside a product. This is a feature known as immutability, and
@@ -51,7 +51,7 @@ to pass around functions we must encapsulate them in an object. Let us therefore
 take a look at Function.
 
 ### Function
-
+```java
   public interface Function<A,B> {
     B call(A a);
 
@@ -64,7 +64,7 @@ take a look at Function.
       return a -> g.call(f.call(a))
     }
   }
-
+```
 Function is a bit special because of java's aforementioned issues with
 first-class functions. In order to instantiate a Function, one must create a
 class that implements Function. Alternately, one can use a lambda expression.
@@ -74,7 +74,7 @@ helper along with the more flexible map. With function defined, all we have left
 to consider for basic algebraic data types is the Sum or Coproduct.
 
 ### Sum
-
+```java
   public class Sum<A,B> {
     private enum Side {Left, Right}
     private A left;
@@ -101,7 +101,7 @@ to consider for basic algebraic data types is the Sum or Coproduct.
       return a.which == Side.Left ? a.left : a.right;
     }
   }
-
+```
 The most important part of Sum is that any instance of Sum only has one of its
 two possible 'spaces' filled. Thus Sum represents the type that could be either
 A or B, but not both at the same time. This is in contrast to Product which must
