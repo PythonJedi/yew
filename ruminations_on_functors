@@ -1,0 +1,395 @@
+/* Yew is a fully functional programming language with quantified algebraic data
+ * types for the java virtual machine.
+ *
+ * Much like Elm's ability to eliminate runtime errors in the javascript
+ * environment, Yew aims to eliminate runtime errors in the java environment.
+ * This is accomplished via a strong algebraic type system that is expressive
+ * enough to eliminate the need for unsafe operations. It also forces
+ * immutability and pure functions which are much easier to reason about and
+ * prove correct.
+ *
+ * The only type in Yew that must be assumed to exist is the Unit type. Given
+ * certain functors and functor patterns, all the other common types of
+ * mathematics come into being. External types may also be inserted to allow Yew
+ * to directly manipulate entities expressed in other languages. In this
+ * document, we will only be concerned with 'pure' Yew, which is the Yew
+ * obtained from the Unit type.
+ */
+
+/* FUNCTION */
+
+/* two important properties of func are:
+ */
+
+// Given
+f :: func B {q}
+g :: func C {y: B, p}
+
+// partial Currying
+func (func T {r}) {s} <-> func T {r, s} <-> func (func T {s}) {r} // Types
+func (func f {r}) {s} <-> func f {r, s} <-> func (func f {s}) {r} // functions
+
+// Composition
+func g {y: f} -> func g {p, f_q}
+
+/* That definition of composition might be a little odd, as well as allowing
+ * partial currying to reorder arguments. The thing is, one of Yew's goals is to
+ * eliminate ordering of terms via explicit indexing and variadicity wherever
+ * possible. For you maths types, the above definition of partial currying and
+ * composition make the category of Yew types a bit different from other type
+ * categories in that composition is commutative except for the final argument,
+ * here codified as the target. This property can only be expressed with the use
+ * of keyword arguments and the variadic nature of the func pattern. One
+ * interesting result of this is that arrows between types are often formed by
+ * partially applying a function instead of composing simpler functions.
+ *
+ * One other useful property of functions is that everything in Yew can be
+ * considered a function, even things like 3 and "foo":
+ */
+
+// term-constructor equivalence
+T <-> func T (u: Unit) // Types
+x :: T
+x <-> func x (u: nil)  // functions
+
+/* Essentially this says that any type can also be considered a function type
+ * from Unit to it. Similarly for functions, in that they can be composed with
+ * nil, Unit's identity function at any time. From these properties we can
+ * actually implement traditional partial function application via composition.
+ */
+
+// Given
+a :: A
+f :: func B {x: A, r}
+// determine the type of
+func f {x: a}
+
+a' = a
+a' :: func A {u: Unit}
+func f {x: a'} :: func B {f_u: Unit, r}
+func f {x: a}  :: func B {r} // term-constructor equivalence
+
+/* So with function types and composition/partial application defined, we can
+ * get to the heart of Yew, Functors. Specifically, indexed multivariate
+ * endofunctors.
+
+/* FUNCTORS */
+
+/* One of the core fundamentals of Yew are functors. They're constructs that can
+ * be applied to both functions and types, providing a clean mirror between
+ * data schemas and defining the functions that generate those schemas. But what
+ * restrictions do functors have? Most texts on the topic are concerned with
+ * functors of one argument, and say that a functor applied to a function
+ * composition must be equivalent to the composition of the functor applied to
+ * each function, and that the functor on an identity function be the identity
+ * function of the functor applied to the type of the original identity
+ * function's type. These are often encoded like this:
+ */
+
+F(id<A>) = id<F(A)>
+F(g . f) = F(g) . F(f)
+
+/* For the handful of functors of two arguments, parallel rules exist, but
+ * occasionally get muddy due to issues with argument ordering. Since Yew is all
+ * about removing the meaning of order and adding in multiple arguments, the
+ * rules for Yew become.
+ */
+
+// Given functor F
+F (p.1: A.1, ..., p.n: A.n) // Must be a type for any set of A
+// And given
+f.i :: func T.i {p.i.1: T.i.1, ..., p.i.(j.i): T.i.(j.i)}
+F :: func (
+  func F(..., p.i: T.i, ...) {
+    ...,
+    p.i_p.i.(j.i): F.i (..., p.i.(k.i): T.i.(j.i), ...),
+    ...
+    } ) {
+    ...,
+    p.i: func T.i {
+      ...,
+      p.i.(j.i): T.i.(j.i),
+      ...
+    },
+    ...
+} // For i ranging from 1 to n, j.i and k.i ranging from 1 to m.i
+
+/* This is obviously a lot more complex than the usual definition, but getting
+ * specific about the types should shed a bit more light on the patterns in
+ * play.
+ */
+
+if A is a type, F(p: A) is also a type
+F on functions has the type
+func (func F(B) {p_p: F(A)}) {p: func B (p: A)}
+
+/* Notice that in this case the functor can be exactly the same in both cases
+ * because everything is a monadic function. In the multivariate case, the
+ * functor inside the return type has to match the number of arguments of each
+ * of the constituent functions. Of course, being as verbose as above isn't all
+ * that conducive to understanding. Thus I'll focus my efforts in proofing on
+ * plain English explanations, reserving syntax for when it is absolutely
+ * necessary to provide definitions and examples.
+ */
+
+/* Before jumping into the other functors, I'd like to point out that function
+ * is also a functor. Given a target type, the function construct maps a set of
+ * parameter names and types to the corresponding function type. Given a target
+ * function, composition maps from functions into the parameter types to a
+ * function from the composed function's parameters to the original target type.
+ */
+
+/* STRUCT */
+
+struct {
+  p1: T1
+  p2: T2
+  ...
+}
+
+/* The struct functor pattern (known by picky math types as the indexed variadic
+ * product) is analogous to the struct from C and C++. There can be a number of
+ * different types of entries in a single struct. The difference with Yew
+ * treating it as a functor pattern is that any struct can also be filled with
+ * functions to create 'struct' functions. A more concrete example:
+ */
+
+NumStr = struct {
+  num: Int
+  str: String
+}
+
+flip :: func NumStr {ns: NumStr}
+flip = struct {
+  num: str -> len
+  str: num -> toString
+}
+
+flip(NumStr(num: 4, str: "Hello, World!")) == NumStr(num: 13, str: "4")
+
+/* In this example, num and str are keywords that identify NumStr from other
+ * 2-element struct-style functors. They are also projection functions that can
+ * take a NumStr and turn it into an Int or String, respectively. This allows
+ * the definition of NumStr to be read as "num of a NumStr is an Int, str of a
+ * NumStr is a String", and the defintion of flip to be read as "num of flip
+ * applied to a NumStr is str followed by len, (and so for str)." If we had two
+ * differently sized structures, we could easily build functions between them by
+ * defining the projections of the resulting struct from the projections of the
+ * source struct.
+ *
+ * This can be done with traditional biadic positional product functors, but it
+ * requires precise composition and products of the tupling and left/right
+ * projective combinators. Yew aims to avoid such pedantry by building off of
+ * real machines' ability to quickly select an arbitrary element and pass that
+ * to a function instead of requiring the deconstruction of the original value
+ * to get the member to a function.
+ *
+ * Something to note about struct, is that any unadic struct is equivalent to
+ * the constituent term:
+ */
+
+struct {
+  a: A
+} = A
+
+/* CASE */
+
+case {
+  i1: T1
+  i2: T2
+  ...
+}
+
+
+/* Case types are complements to struct types. While a value of a struct type
+ * contains an element of each type specified in the struct type, a value of a
+ * case type may be any value of any of the types in the type definition, but
+ * only one at a time. Unlike C unions, it is impossible to shove an int into a
+ * union and get a float out without doing the necessary calculation to actually
+ * convert. It is much better to consider case types as a way to describe "a
+ * value of this type could be A or B or ..."
+ *
+ * The complementary nature of case types continues with the meaning of the
+ * keywords in the definition. For structs, the keywords specified how to get a
+ * particular type out of a struct type. In case types, the keywords specify
+ * how to get a particular type into the case type, hence they are known as
+ * 'injection' functions or constructors.
+ *
+ * How does case get applied to functions? Well, it allows for pattern matching
+ * on the injectors, much like a switch-case block in C or Java, but much more
+ * powerful. The target type of a function with a case block at the highest
+ * level is the case functor identified by the injectors at the end of each
+ * pipeline
+ *
+ * As a fun exercise, observe how the Booleans can be encoded as a case of two
+ * Unit injectors.
+ */
+
+Boolean = case {
+  True: Unit
+  False: Unit
+}
+
+not = case {
+  True:  False
+  False: True
+}
+
+or = case {
+  True: case {
+    True: True
+    False: True
+  }
+  False: case {
+    True: True
+    False: False
+  }
+}
+
+and = case {
+  True: case {
+    True: True
+    False: False
+  }
+  False: case {
+    True: False
+    False: False
+  }
+}
+
+/* These three functors can go a long way. However, there is no way for a new
+ * functor to be created, nor is there a means to handle recursive or infinite
+ * data types. Things like lists, trees, and streams are extremely important to
+ * the modern programmer, and these require recursive and corecursive structures
+ * to reason about. We also need a means to parameterize our types, as well as
+ * hide details about what types might be being used inside a library of
+ * functions.
+ *
+ * Thus we have reached the two dual notions remaining in Yew's structures:
+ * Quantification and Fixed Points. We shall tackle quantification first.
+ */
+
+/* QUANTIFIED TYPES*/
+
+Maybe = forAll t:A {
+  case {
+    Nothing: None
+    Just: A
+  }
+}
+
+increment = forAll x: Int {
+  x + 1
+}
+
+char_stack :: exists carrier:T {
+  empty: T
+  push: func T {prev: T, c: Char}
+  pop: func (struct{next: T, c: Char}) {prev: T}
+}
+
+divisible_proof = forAll x: Int {
+  exists y:Int {x / y :: Int} {y:1}
+}
+
+/* Firstly, notice that these are not functors. While universal quantification
+ * introduces parameterization and can be used to create functions, it cannot be
+ * applied to functions in the same way that struct, case, and func can. This is
+ * caused by quantification not being able to be defined in the category of
+ * Yew types, as it operates on expressions of types or functions.
+ *
+ * Universal quantification is relatively straightforward, as it creates a type
+ * that can be applied to other types to create yet another type. Similarly with
+ * functions, given term-constructor equivalence. Notice that this is how
+ * arbitrary functions are created in Yew, instead of through the func functor.
+ *
+ * Existential quantification is a bit harder to explain. For types, it allows
+ * the creation of opaque interfaces. If a function has a parameter with an
+ * existential type, that function can be passed any term matching that
+ * existential type through an injector, but the body of the function will never
+ * be able to tell what the implementation is. Moreover, if a library exposes an
+ * existential type, the client code cannot make any assumptions about how the
+ * library implemented the type.
+ *
+ * Functions are even more difficult, because they don't have a good analogue in
+ * modern mainstream programming. They're related to assertions, but are even
+ * more useful. Essentially, the divisible_proof above is a function that takes
+ * any integer and hands back a term that describes the fact that there is some
+ * integer such that when x is divided by it, the result is an integer. Any code
+ * calling divisible_proof will be able to refer to y, and divide the value they
+ * used for x by y to get some other y, but they won't be able to know what y
+ * is. While this example isn't terribly useful, the ability to make statements
+ * about the interaction of functions without actually determining what the
+ * functions are should prove to be useful, especially when combined with
+ * existential types. If a function took an existential type with empty, insert,
+ * and extract functions, and it wanted to guarantee that the passed in value
+ * is a stack, it may ask for a cofunction (the type of terms created by
+ * existential quantification) about the existential type. The utility of this
+ * construct is big enough that making its use simple and straightforward is a
+ * priority.
+ */
+
+/* FIXED POINTS */
+
+Nat = Lfix X {case {Zero: Unit, Succ: X}}
+Stream = forAll datum:A {Gfix X {struct{term:A, next:X}}}
+
+cata :: forAll functor:F, res:A {
+  func A {
+    sig: func A {term F(x:A)}
+    term: Lfix x F
+  }
+}
+cata = Lfix f {forAll sig, term {
+  comp sig {x: comp F.map {f:comp f {sig: sig}, term}}
+}
+
+/* Fixed points are likely the most mind-bending things in Yew over the long
+ * term. This is because they're used to implement recursion. If a list is
+ * defined as a term and a list or a defined nothing, then we have recursion in
+ * the definition, and Yew would rather avoid that. Instead, Yew uses the least
+ * fixed point and some type expression with a free variable where list would
+ * be. This is saying the 'smallest' type that can contain an arbitrary number
+ * of nestings of the type expression. Alternately, the greatest fixed point of
+ * some type expression is the largest type that can be constructed with
+ * possibly infinite nestings of the type expression.
+ *
+ * Similarly with functions, the least fixed point keeps nesting the expression
+ * until the bound variable is eliminated. The greatest fixed point would
+ * instead nest only when required to do so, as the function might nest
+ * infinitely. These allow for the creation of recursion schemes, functions that
+ * take a function and link it with recursive types in a meaningful manner,
+ * by destructing a recursive type into a (possibly recursive) type, by
+ * constructing a recursive type from a (possibly recursive) type, or by doing
+ * both in one order or the other. There's also patterns that pass copies of the
+ * value to the parameterized function, or even entire histories of the function
+ * arguments. The diversity amongst these patterns requires that yew allow for
+ * creation of new schemes, however these should always be as general as
+ * possible (the above example shows that there are some issues with parameter
+ * names and generality) so that they can be reused without considering how to
+ * implement them again for some other type.
+ *
+ * Yew also should require some sort of accompanying proofs of certain
+ * properties of any recursion scheme such that it may be recognized by the
+ * compiler as a scheme, since unbounded recursion via lfix and gfix is frowned
+ * upon.
+ */
+
+/* Thus concludes the major properties of Yew, though still in much need of
+ * cleaning up, formalizing, and making more palatable to actually write.
+ * Nevertheless, Yew encompasses eight different syntactic constructs, three
+ * (possibly four) of which are functors. Now for the math types, contemplate
+ * this:
+ * - struct is a product endofunctor, struct on functions produces functions on
+ *   structs
+ * - union is a coproduct endofunctor, dual to struct
+ * - functions are produced via composition or universal quantification
+ * - Universal quantification on type expressions produces polymorphism
+ * - Existential quantification on functions produces cofunctions
+ * - Existential quantification on types produces abstract data types
+ * - Fixed points are used to create arbitrary computation.
+ * The amount of symmetry between the constructs is quite nice when one realizes
+ * that the quantification expressions are infinitary sums and products in
+ * category theory terms (same base idea as struct and union, but different
+ * implementation).
+ */
