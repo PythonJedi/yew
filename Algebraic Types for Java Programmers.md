@@ -188,3 +188,94 @@ infinite structures, creating new infinite structures that can be inspected by
 partial evaluation of a print function or other suitable output.
 
 ## Quantification
+
+The final major component of functional programming with java is that of
+quantification. Quantification deals with the binding of variables (fixed points
+also bind variables but only in a recursive manner; quantifiers are much more
+flexible.) in expressions to create parameterization and data hiding. To use the
+black box analogy that oracle is so fond of, quantifiers create black boxes. In
+Universal Quantification, the expression being quantified works with the black
+boxes of its parameters, types or functions. Existential quantification is its
+dual notion, in that the expression being quantified is a black box to the
+outside world. Most programmers of all backgrounds are more familiar with
+universal quantification, so we will start with that.
+
+### Universal Quantification of Types
+
+We've actually been using universal type quantification this entire time. Java
+calls them 'generics.' When a term in a type expression can be any type, we can
+universally quantify on that term and create a type 'constructor' that produces
+a new type when the type parameter is replaced with an actual type. Doing this
+recursively yields the fixed points, as previously noted. However, when we can
+quantify on any type, we can do all sorts of neat things.
+
+```java
+  public class Maybe<A>
+    extends Sum<Unit,A>
+    implements Functor, Applicative, Monad{
+
+    public static Maybe<B> map (Function<A,B> f, Maybe<A> m) =
+      Sum<Unit,A>.map(Unit::identity, f);
+
+    public static Maybe<B> map (Maybe<Function<A,B>> mf, Maybe<A> m) =
+      Sum<Unit,Function<A,B>>.map(Unit::identity, f -> Maybe<A>.map(f,m));
+
+    public Maybe<A> pure (A a) = Sum<Unit,A>::new;
+
+    public static Maybe<B> bind (Function<A,Maybe<B>> f, Mabye<A> m) {
+      return  m.which == Left ? Maybe<A>(Unit.none) : f(m);
+    }
+  }
+```
+
+Those of you that know Haskell, take a close look. That is a full definition
+of a proper functional Maybe type in (nearly) correct Java. For everyone else,
+take a bit of time to think through the possibilities of the above type. The
+two map instances allow a function to be applied to the value 'inside' the maybe
+if there is a value, otherwise passing the nothing along. The second map allows
+for the function to possibly not exist as well (maybe due to an issue loading a
+class). The pure is just an alias for the A constructor of the underlying sum
+type. Bind allows for a function that produces a maybe (a computation that may
+fail) to be applied to a value that may not exist, producing another value that
+may not exist. If we had just used map, we would have ended up with a nested
+Maybe, which is a bit of a pain to work with. One really neat thing is that we
+can define the same four functions for List, Tree, and many other quantified
+types. Further additions to this document may dive deeper into the implications
+of the Functor, Applicative, and Monad.
+
+Since generics have made the idea of parameterized types relatively common in
+the Java world, there is not much else to cover for types. For functions,
+universal quantification is a lambda expression. "for all x, (some expression
+involving x)" is simply another way of stating a function or lambda.
+
+### Existential Quantification
+
+Existential quantification is a little bit more difficult, and is not nearly as
+well known in the functional world. It is dual to universal quantification, as
+stated before. For types, existential quantification means that some type of
+arbitrary name exists, but that any function using a term of an existential type
+cannot make any assumptions about what type it is. Existentials are usually
+applied to products, so that multiple related terms can be combined together and
+applied to one another. In java, this can be accomplished by using interfaces,
+as a function using an term 'masked' as an interface can only assume the
+functions defined by the interface exist. To 'instantiate' the existential type,
+a class must be defined that implements the interface. A more flexible language
+would allow any combination of functions and types to be thrown together as an
+instance of the existential type, but anonymous classes do okay.
+
+Existential quantification for functions is even more interesting. Since
+universal quantification creates functions, and existential quantification is
+dual to universal quantification we could call the term created by existential
+quantification a 'co-function'. What would this term be like? Well, we have to
+dig a bit into the nature of existential quantification. Universal
+quantification allows us to get any number of terms out of an expression, while
+existential quantification allows us to create a term from any number of other
+terms. They are somewhat like souped up Product and Sum. Indeed, mathematicians
+sometimes call them as 'infinite' products and sums.
+
+If we consider this alongside the known interpretation of existential
+quantification over types, we can actually see that existential quantification
+over function expressions is actually a form of information hiding, but
+different than how java does it. A cofunction term can be created by injecting a
+set of terms into a matching cofunction type. Any expression using a cofunction
+term must be valid for any possible construction of that cofunction, 
