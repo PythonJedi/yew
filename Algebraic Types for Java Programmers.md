@@ -97,7 +97,7 @@ to consider for basic algebraic data types is the Sum or Coproduct.
                                                   g.call(s.right));
     }
 
-    public static A unwrap(Sum<A,A> a) {
+    public static A unwrap (Sum<A,A> a) {
       return a.which == Side.Left ? a.left : a.right;
     }
   }
@@ -178,5 +178,13 @@ terms in an improved java like so.
 
 In this case, Natural is either a null (in this case representing 0), or some
 nesting of n right constructors of Sum around a null, representing the nth
-natural number. Stream is some item and a Stream. Since there is no null, there
-is always another stream to project another item and stream 
+natural number. Stream is some item and a Stream. Since there is no possibility
+of null, there is always another stream to project into another item and stream.
+Since this structure is known to be potentially infinite (due to the use of
+GFix in its declaration), a compiler can check to make sure functions that
+depend on all the items in the structure (like sum and print) are not called on
+it. However, there are entire groups of functions that can be evaluated on
+infinite structures, creating new infinite structures that can be inspected by
+partial evaluation of a print function or other suitable output.
+
+## Quantification
