@@ -105,7 +105,7 @@ to consider for basic algebraic data types is the Sum or Coproduct.
 The most important part of Sum is that any instance of Sum only has one of its
 two possible 'spaces' filled. Thus Sum represents the type that could be either
 A or B, but not both at the same time. This is in contrast to Product which must
-have both spaces filled at construction. Also notice that Sum has two was to
+have both spaces filled at construction. Also notice that Sum has two ways to
 wrap a value as a Sum, while Product has two ways to unwrap a product into a
 value. This kind of relationship where two things are related with components
 reversed is known in mathematics as duality, and we'll be exploring it for the
@@ -257,25 +257,10 @@ arbitrary name exists, but that any function using a term of an existential type
 cannot make any assumptions about what type it is. Existentials are usually
 applied to products, so that multiple related terms can be combined together and
 applied to one another. In java, this can be accomplished by using interfaces,
-as a function using an term 'masked' as an interface can only assume the
+as a function using a term 'masked' as an interface can only assume the
 functions defined by the interface exist. To 'instantiate' the existential type,
 a class must be defined that implements the interface. A more flexible language
-would allow any combination of functions and types to be thrown together as an
+would allow any combination of functions and a type to be thrown together as an
 instance of the existential type, but anonymous classes do okay.
 
-Existential quantification for functions is even more interesting. Since
-universal quantification creates functions, and existential quantification is
-dual to universal quantification we could call the term created by existential
-quantification a 'co-function'. What would this term be like? Well, we have to
-dig a bit into the nature of existential quantification. Universal
-quantification allows us to get any number of terms out of an expression, while
-existential quantification allows us to create a term from any number of other
-terms. They are somewhat like souped up Product and Sum. Indeed, mathematicians
-sometimes call them as 'infinite' products and sums.
-
-If we consider this alongside the known interpretation of existential
-quantification over types, we can actually see that existential quantification
-over function expressions is actually a form of information hiding, but
-different than how java does it. A cofunction term can be created by injecting a
-set of terms into a matching cofunction type. Any expression using a cofunction
-term must be valid for any possible construction of that cofunction, 
+##
