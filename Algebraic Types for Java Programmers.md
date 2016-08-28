@@ -263,4 +263,23 @@ a class must be defined that implements the interface. A more flexible language
 would allow any combination of functions and a type to be thrown together as an
 instance of the existential type, but anonymous classes do okay.
 
-##
+Another interesting property that arises when we consider Existential
+Quantification as fundamental is that we can get inheritance and subclassing out
+of it if we define it in a 'backwards' manner. Consider some type B that
+implements a set of interfaces S. Consider also some type A that implements a
+subset of S. Could we not say that type B 'extends' A by allowing the
+implementation of new interfaces? Thus the java compiler doing all of the work
+of handling superclasses and subclasses and such, is simply ensuring that every
+interface implemented by A is also implemented by B, including the interface
+unique to A that requires the existence of every method of A.
+
+## Conclusion
+
+Thus concludes the discussion of the extended algebraic types and how they apply
+to the world of Java. These types are almost enough to calculate anything
+calculable. You may have noticed that type constructors come in pairs except for
+function. This is not because function is self dual. There is a relatively
+unknown dual of function that represents variable binding (a function dual term
+can be applied to an expression with free variables to produce a result, instead
+of a function being created by wrapping an expression with free variables).
+Since that type has not yet been well explored, 
